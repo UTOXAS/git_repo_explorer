@@ -51,27 +51,15 @@ class GitRepoApp:
             background=[("active", "#059669")],
             shiftrelief=[("pressed", -1)],
         )
-        style.configure(
-            "Custom.Treeview",
-            font=("Arial", 10),
-            rowheight=28,
-            background="#FFFFFF",
-            foreground="#374151",
-            fieldbackground="#FFFFFF",
-            borderwidth=1,
-            relief="solid",
-            bordercolor="#E5E7EB",
-        )
-        style.configure(
-            "Custom.Treeview.Heading", font=("Arial", 10, "bold"), background="#F9FAFB"
-        )
 
     def process_repo(self, repo_path, branch=None):
         """Process the repository and update the GUI."""
         self.repo_handler = RepositoryHandler(repo_path, branch)
         self.structure = self.repo_handler.get_repo_structure()
         self.gui.display_structure(self.structure)
-        self.selected_files = self._get_all_files(self.structure)
+        self.selected_files = self._get_all_files(
+            self.structure
+        )  # All files initially selected
         self.gui.update_save_button_state(True)
 
     def _get_all_files(self, structure, prefix=""):
@@ -86,22 +74,24 @@ class GitRepoApp:
         return files
 
     def on_file_select(self, event):
-        """Handle file selection events in the treeview."""
-        item = self.gui.tree.identify("item", event.x, event.y)
-        if not item:
+        """Handle file selection events in the listbox."""
+        index = self.gui.listbox.nearest(event.y)
+        if index < 0:
             return
-        full_path = self.gui.tree.item(item, "text")
+        full_path = self.gui.get_item_text(index)
         is_dir = self._is_directory(full_path)
-        is_strikethrough = "strikethrough" in self.gui.tree.item(item, "tags")
+        is_selected = "strikethrough" not in self.gui.get_item_tags(index)
 
-        if is_strikethrough:
-            self._select_item(item, full_path, is_dir)
-        elif not is_dir and full_path in self.selected_files:
-            self._deselect_item(item, full_path, False)
-        elif is_dir:
-            self._deselect_item(item, full_path, True)
+        if is_selected:
+            if is_dir:
+                self._deselect_folder(index, full_path)
+            else:
+                self._deselect_file(index, full_path)
         else:
-            self._select_item(item, full_path, False)
+            if is_dir:
+                self._select_folder(index, full_path)
+            else:
+                self._select_file(index, full_path)
         self.gui.update_save_button_state(len(self.selected_files) > 0)
 
     def _is_directory(self, path):
@@ -113,25 +103,41 @@ class GitRepoApp:
             current = current[part]
         return True
 
-    def _select_item(self, item, path, is_dir):
-        """Select an item and its children if it's a directory."""
-        self.gui.tree.item(item, tags=())
-        if is_dir:
-            for child in self.gui.tree.get_children(item):
-                child_path = self.gui.tree.item(child, "text")
-                self._select_item(child, child_path, self._is_directory(child_path))
-        else:
-            self.selected_files.add(path)
+    def _select_file(self, index, path):
+        """Select a single file and remove strikethrough."""
+        self.gui.set_item_tags(index, ())
+        self.selected_files.add(path)
 
-    def _deselect_item(self, item, path, is_dir):
-        """Deselect an item and its children if it's a directory."""
-        self.gui.tree.item(item, tags=("strikethrough",))
-        if is_dir:
-            for child in self.gui.tree.get_children(item):
-                child_path = self.gui.tree.item(child, "text")
-                self._deselect_item(child, child_path, self._is_directory(child_path))
-        else:
-            self.selected_files.discard(path)
+    def _deselect_file(self, index, path):
+        """Deselect a single file and apply strikethrough."""
+        self.gui.set_item_tags(index, ("strikethrough",))
+        self.selected_files.discard(path)
+
+    def _select_folder(self, index, path):
+        """Select a folder and its children recursively, removing strikethrough."""
+        self.gui.set_item_tags(index, ())  # Select folder
+        self._update_folder_children(index, path, select=True)
+
+    def _deselect_folder(self, index, path):
+        """Deselect a folder and its children recursively, applying strikethrough."""
+        self.gui.set_item_tags(index, ("strikethrough",))  # Deselect folder
+        self._update_folder_children(index, path, select=False)
+
+    def _update_folder_children(self, start_index, folder_path, select):
+        """Recursively update all children of a folder."""
+        folder_path_with_sep = folder_path + os.sep
+        for i in range(start_index + 1, self.gui.listbox.size()):
+            child_path = self.gui.get_item_text(i)
+            if not child_path.startswith(folder_path_with_sep):
+                break
+            if select:
+                self.gui.set_item_tags(i, ())  # Remove strikethrough
+                if not self._is_directory(child_path):
+                    self.selected_files.add(child_path)
+            else:
+                self.gui.set_item_tags(i, ("strikethrough",))  # Apply strikethrough
+                if not self._is_directory(child_path):
+                    self.selected_files.discard(child_path)
 
     def save_to_file(self):
         """Save selected files to an output file."""

@@ -12,6 +12,7 @@ class RepositoryGUI:
         self.root = root
         self.app = app
         self.process_callback = process_callback
+        self.item_tags = []  # Track tags for each item
         self.create_widgets()
 
     def create_widgets(self):
@@ -61,12 +62,21 @@ class RepositoryGUI:
         )
         self.process_button.pack(pady=(0, 20))
 
-        self.tree = ttk.Treeview(
-            self.main_frame, show="tree", selectmode="none", style="Custom.Treeview"
+        self.listbox = tk.Listbox(
+            self.main_frame,
+            font=("Arial", 10),
+            bg="#FFFFFF",
+            fg="#374151",
+            selectmode="none",
+            relief="solid",
+            borderwidth=1,
+            highlightthickness=0,
+            activestyle="none",  # No active style change
+            selectbackground="#FFFFFF",  # Match background to remove highlighting
+            selectforeground="#374151",  # Match foreground to remove highlighting
         )
-        self.tree.pack(fill="both", expand=True)
-        self.tree.tag_configure("strikethrough", font=("Arial", 10, "overstrike"))
-        self.tree.bind("<Button-1>", self.app.on_file_select)
+        self.listbox.pack(fill="both", expand=True)
+        self.listbox.bind("<Button-1>", self.app.on_file_select)
 
         self.save_button = ttk.Button(
             self.main_frame,
@@ -85,17 +95,49 @@ class RepositoryGUI:
             self.process_callback(repo_path, branch)
 
     def display_structure(self, structure):
-        """Display the repository structure with all items expanded."""
-        self.tree.delete(*self.tree.get_children())
-        self._populate_tree("", structure)
+        """Display the repository structure in the listbox."""
+        self.listbox.delete(0, tk.END)
+        self.item_tags = []
+        self._populate_listbox(structure)
 
-    def _populate_tree(self, parent, structure):
-        """Populate treeview and expand all items."""
-        for path, content in structure.items():
-            node = self.tree.insert(parent, "end", text=path, open=True)
+    def _populate_listbox(self, structure, prefix=""):
+        """Populate the listbox with tree-like structure."""
+        for name, content in structure.items():
             if isinstance(content, dict):
-                self._populate_tree(node, content)
+                display_name = f"{prefix}└── {name}/"
+                self.listbox.insert(tk.END, display_name)
+                self.item_tags.append(())  # Initially selected, no strikethrough
+                self._populate_listbox(content, prefix + "    ")
+            else:
+                display_name = f"{prefix}    ├── {name}"
+                self.listbox.insert(tk.END, display_name)
+                self.item_tags.append(())  # Initially selected, no strikethrough
 
     def update_save_button_state(self, enabled):
         """Enable or disable the save button based on selection."""
         self.save_button["state"] = "normal" if enabled else "disabled"
+
+    def get_item_text(self, index):
+        """Get the actual path from the display text at the given index."""
+        display_text = self.listbox.get(index).replace(
+            "\u0336", ""
+        )  # Remove strikethrough
+        if "└──" in display_text:
+            return display_text.split("└── ")[1].rstrip("/")
+        return display_text.split("├── ")[1]
+
+    def set_item_tags(self, index, tags):
+        """Set visual tags (e.g., strikethrough) for an item."""
+        text = self.listbox.get(index).replace("\u0336", "")  # Clean original text
+        self.item_tags[index] = tags
+        if "strikethrough" in tags:
+            striked_text = "".join(c + "\u0336" for c in text)
+            self.listbox.delete(index)
+            self.listbox.insert(index, striked_text)
+        else:
+            self.listbox.delete(index)
+            self.listbox.insert(index, text)
+
+    def get_item_tags(self, index):
+        """Get the tags for an item at the given index."""
+        return self.item_tags[index]
