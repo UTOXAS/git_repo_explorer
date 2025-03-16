@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 
-"""GUI module for Git Repository Explorer."""
+"""Module for managing the GUI in Git Repository Explorer."""
 
 
 class RepositoryGUI:
@@ -85,20 +85,34 @@ class RepositoryGUI:
             self.process_callback(repo_path, branch)
 
     def display_structure(self, structure):
-        """Display the repository structure in the treeview."""
+        """Display the repository structure in the treeview with all items expanded."""
         self.tree.delete(*self.tree.get_children())
         self._populate_tree("", structure)
+        self._expand_all()
 
     def _populate_tree(self, parent, structure):
         """Recursively populate the treeview with repository structure."""
         for path, content in structure.items():
-            if not parent:
-                node_path = path
-            else:
-                node_path = os.path.join(self.tree.item(parent, "text"), path)
+            full_path = (
+                path
+                if not parent
+                else os.path.join(self.tree.item(parent, "text"), path)
+            )
             node = self.tree.insert(parent, "end", text=path)
             if isinstance(content, dict):
                 self._populate_tree(node, content)
+
+    def _expand_all(self):
+        """Expand all items in the treeview."""
+        for item in self.tree.get_children():
+            self.tree.item(item, open=True)
+            self._expand_children(item)
+
+    def _expand_children(self, item):
+        """Recursively expand all children of a treeview item."""
+        for child in self.tree.get_children(item):
+            self.tree.item(child, open=True)
+            self._expand_children(child)
 
     def update_save_button_state(self, enabled):
         """Enable or disable the save button based on selection state."""

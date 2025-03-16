@@ -1,6 +1,6 @@
 import os
 
-"""File writing module for Git Repository Explorer."""
+"""Module for handling file writing operations in Git Repository Explorer."""
 
 
 class FileWriter:

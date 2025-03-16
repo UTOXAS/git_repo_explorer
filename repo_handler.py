@@ -6,7 +6,7 @@ import git
 from charset_normalizer import detect
 from gitignore_parser import parse_gitignore
 
-"""Repository handling module for Git Repository Explorer."""
+"""Module for handling repository operations in Git Repository Explorer."""
 
 
 class RepositoryHandler:

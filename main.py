@@ -5,7 +5,7 @@ from gui import RepositoryGUI
 from repo_handler import RepositoryHandler
 from file_writer import FileWriter
 
-"""Main application module for Git Repository Explorer."""
+"""Module for running the main application of Git Repository Explorer."""
 
 
 class GitRepoApp:
