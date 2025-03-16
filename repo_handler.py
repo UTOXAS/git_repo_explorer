@@ -12,6 +12,7 @@ class RepositoryHandler:
         self.repo_path = self._strip_branch_from_url(repo_path)
         self.branch = branch
         self.temp_dir = None
+        self.repo_dir = None
         self._clone_or_validate_repo()
 
     def _strip_branch_from_url(self, repo_path):
@@ -29,8 +30,10 @@ class RepositoryHandler:
     def _clone_or_validate_repo(self):
         if os.path.isdir(self.repo_path):
             if not os.path.exists(os.path.join(self.repo_path, ".git")):
-                raise ValueError("Local path is not a Git repository")
-            self.repo_dir = self.repo_path
+                raise ValueError(
+                    f"Local path '{self.repo_path}' is not a Git repository"
+                )
+            self.repo_dir = os.path.abspath(self.repo_path)  # Ensure absolute path
             if self.branch:
                 try:
                     repo = git.Repo(self.repo_dir)
@@ -52,6 +55,9 @@ class RepositoryHandler:
                 raise e
 
     def get_repo_structure(self):
+        if not self.repo_dir:
+            raise ValueError("Repository directory not initialized")
+
         structure = {}
         gitignore_path = os.path.join(self.repo_dir, ".gitignore")
         ignore_func = (
@@ -64,7 +70,10 @@ class RepositoryHandler:
             if ".git" in dirs:
                 dirs.remove(".git")  # Exclude .git directory
 
-            # Get relative path safely
+            # Ensure root is within repo_dir
+            if not root.startswith(self.repo_dir):
+                continue
+
             try:
                 relative_root = os.path.relpath(root, self.repo_dir)
             except ValueError:
