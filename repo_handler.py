@@ -99,12 +99,16 @@ class RepositoryHandler:
                 print(f"Failed to compute relative path for: {root_normalized}")
                 continue
 
-            # Apply .gitignore filtering to directories
+            # Apply .gitignore filtering to directories immediately
             dirs_before = dirs.copy()
             self._filter_dirs(dirs, relative_root, ignore_func)
             print(
                 f"Filtered dirs from {dirs_before} to {dirs} for relative_root: {relative_root}"
             )
+            # Additional check for ignored directories like .dart_tool
+            if relative_root == ".":
+                dirs[:] = [d for d in dirs if not ignore_func(d)]
+                print(f"Root-level dirs after .gitignore filter: {dirs}")
             self._build_structure(structure, relative_root, files, ignore_func)
 
         return structure
