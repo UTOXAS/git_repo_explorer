@@ -9,127 +9,151 @@ from gitignore_parser import parse_gitignore
 
 class RepositoryHandler:
     def __init__(self, repo_path, branch=None):
-        self.repo_path = self._strip_branch_from_url(repo_path)
-        self.branch = branch
-        self.temp_dir = None
-        self.repo_dir = None
-        self._clone_or_validate_repo()
+        self._repo_path = self._strip_branch_from_url(repo_path)
+        self._branch = branch
+        self._temp_dir = None
+        self._repo_dir = None
+        self._initialize_repository()
 
     def _strip_branch_from_url(self, repo_path):
+        """Extracts the base repository URL from a GitHub link."""
         if repo_path.startswith("https://github.com"):
             match = re.match(
                 r"(https://github\.com/[^/]+/[^/]+)(?:/tree/[^/]+)?", repo_path
             )
             if match:
                 base_url = match.group(1)
-                if not base_url.endswith(".git"):
-                    base_url += ".git"
-                return base_url
+                return base_url + ".git" if not base_url.endswith(".git") else base_url
         return repo_path
 
-    def _clone_or_validate_repo(self):
-        if os.path.isdir(self.repo_path):
-            if not os.path.exists(os.path.join(self.repo_path, ".git")):
-                raise ValueError(
-                    f"Local path '{self.repo_path}' is not a Git repository"
-                )
-            self.repo_dir = os.path.abspath(self.repo_path)  # Ensure absolute path
-            if self.branch:
-                try:
-                    repo = git.Repo(self.repo_dir)
-                    repo.git.checkout(self.branch)
-                except git.GitCommandError as e:
-                    raise ValueError(
-                        f"Branch '{self.branch}' not found in local repository"
-                    )
+    def _initialize_repository(self):
+        """Sets up the repository by cloning or validating the path."""
+        if os.path.isdir(self._repo_path):
+            self._setup_local_repo()
         else:
-            self.temp_dir = tempfile.mkdtemp(prefix="git_repo_")
-            try:
-                clone_args = {"url": self.repo_path, "to_path": self.temp_dir}
-                if self.branch:
-                    clone_args["branch"] = self.branch
-                git.Repo.clone_from(**clone_args)
-                self.repo_dir = self.temp_dir
-            except git.GitCommandError as e:
-                shutil.rmtree(self.temp_dir, ignore_errors=True)
-                raise e
+            self._clone_remote_repo()
+
+    def _setup_local_repo(self):
+        """Validates and configures a local repository."""
+        self._repo_dir = os.path.abspath(self._repo_path)
+        if not os.path.exists(os.path.join(self._repo_dir, ".git")):
+            raise ValueError(f"Path '{self._repo_path}' is not a Git repository")
+        if self._branch:
+            self._checkout_branch()
+
+    def _checkout_branch(self):
+        """Switches to the specified branch in the local repository."""
+        try:
+            repo = git.Repo(self._repo_dir)
+            repo.git.checkout(self._branch)
+        except git.GitCommandError:
+            raise ValueError(f"Branch '{self._branch}' not found")
+
+    def _clone_remote_repo(self):
+        """Clones a remote repository to a temporary directory."""
+        self._temp_dir = tempfile.mkdtemp(prefix="git_repo_")
+        try:
+            clone_args = {"url": self._repo_path, "to_path": self._temp_dir}
+            if self._branch:
+                clone_args["branch"] = self._branch
+            git.Repo.clone_from(**clone_args)
+            self._repo_dir = self._temp_dir
+        except git.GitCommandError as e:
+            shutil.rmtree(self._temp_dir, ignore_errors=True)
+            raise e
 
     def get_repo_structure(self):
-        if not self.repo_dir:
+        """Builds a dictionary representing the repository's file structure."""
+        if not self._repo_dir:
             raise ValueError("Repository directory not initialized")
 
         structure = {}
-        gitignore_path = os.path.join(self.repo_dir, ".gitignore")
-        ignore_func = (
+        ignore_func = self._get_ignore_function()
+
+        for root, dirs, files in os.walk(self._repo_dir, topdown=True):
+            if not self._is_valid_root(root):
+                continue
+            self._filter_dirs(dirs, root, ignore_func)
+            relative_root = self._compute_relative_root(root)
+            if relative_root is None:
+                continue
+            self._build_structure(structure, relative_root, files, ignore_func)
+
+        return structure
+
+    def _get_ignore_function(self):
+        """Creates a function to filter files based on .gitignore."""
+        gitignore_path = os.path.join(self._repo_dir, ".gitignore")
+        return (
             parse_gitignore(gitignore_path)
             if os.path.exists(gitignore_path)
             else lambda x: False
         )
 
-        for root, dirs, files in os.walk(self.repo_dir, topdown=True):
-            if ".git" in dirs:
-                dirs.remove(".git")  # Exclude .git directory
+    def _is_valid_root(self, root):
+        """Ensures the root path is within the repository directory."""
+        return root.startswith(self._repo_dir) and ".git" not in root.split(os.sep)
 
-            # Ensure root is within repo_dir
-            if not root.startswith(self.repo_dir):
-                continue
+    def _filter_dirs(self, dirs, root, ignore_func):
+        """Filters directories based on .gitignore rules."""
+        relative_root = self._compute_relative_root(root) or "."
+        dirs[:] = [
+            d
+            for d in dirs
+            if not ignore_func(
+                os.path.join(relative_root, d) if relative_root != "." else d
+            )
+        ]
 
-            try:
-                relative_root = os.path.relpath(root, self.repo_dir)
-            except ValueError:
-                continue  # Skip if path resolution fails
+    def _compute_relative_root(self, root):
+        """Computes the relative path of root from repo_dir safely."""
+        try:
+            return os.path.relpath(root, self._repo_dir)
+        except ValueError:
+            return None
 
-            # Skip if the root itself is ignored
-            if relative_root != "." and ignore_func(relative_root):
-                dirs[:] = []  # Clear dirs to prevent further traversal
-                continue
+    def _build_structure(self, structure, relative_root, files, ignore_func):
+        """Populates the structure dictionary with files and directories."""
+        current_level = structure
+        if relative_root != ".":
+            for part in relative_root.split(os.sep):
+                current_level = current_level.setdefault(part, {})
 
-            # Filter directories
-            dirs[:] = [
-                d
-                for d in dirs
-                if not ignore_func(
-                    os.path.join(relative_root, d) if relative_root != "." else d
-                )
-            ]
-
-            current_level = structure
-            if relative_root != ".":
-                for part in relative_root.split(os.sep):
-                    current_level = current_level.setdefault(part, {})
-
-            # Filter files
-            for file in files:
-                full_rel_path = (
-                    os.path.join(relative_root, file) if relative_root != "." else file
-                )
-                if not ignore_func(full_rel_path):
-                    current_level[file] = False
-
-        return structure
+        for file in files:
+            full_rel_path = (
+                os.path.join(relative_root, file) if relative_root != "." else file
+            )
+            if not ignore_func(full_rel_path):
+                current_level[file] = False
 
     def get_file_content(self, file_path):
-        full_path = os.path.join(self.repo_dir, file_path)
+        """Reads and returns the content of a file."""
+        full_path = os.path.join(self._repo_dir, file_path)
         file_size = os.path.getsize(full_path)
         if file_size > 1024 * 1024:  # 1MB limit
             return "Binary file - contents omitted"
 
-        sample_size = min(file_size, 64 * 1024)
-        with open(full_path, "rb") as f:
-            sample = f.read(sample_size)
-
-        result = detect(sample)
-        confidence = result["confidence"] or 0
-        encoding = result["encoding"]
-
-        if confidence > 0.95 and encoding:
-            try:
-                with open(full_path, "r", encoding=encoding) as f:
-                    return f.read()
-            except (UnicodeDecodeError, IOError):
-                return "Binary file - contents omitted"
+        encoding = self._detect_encoding(full_path)
+        if encoding:
+            return self._read_text_file(full_path, encoding)
         return "Binary file - contents omitted"
 
+    def _detect_encoding(self, full_path):
+        """Detects the file encoding with a sample."""
+        with open(full_path, "rb") as f:
+            sample = f.read(min(os.path.getsize(full_path), 64 * 1024))
+        result = detect(sample)
+        return result["encoding"] if result["confidence"] > 0.95 else None
+
+    def _read_text_file(self, full_path, encoding):
+        """Reads a text file with the specified encoding."""
+        try:
+            with open(full_path, "r", encoding=encoding) as f:
+                return f.read()
+        except (UnicodeDecodeError, IOError):
+            return "Binary file - contents omitted"
+
     def __del__(self):
-        if self.temp_dir and os.path.exists(self.temp_dir):
-            shutil.rmtree(self.temp_dir, ignore_errors=True)
+        """Cleans up temporary directory on object destruction."""
+        if self._temp_dir and os.path.exists(self._temp_dir):
+            shutil.rmtree(self._temp_dir, ignore_errors=True)
