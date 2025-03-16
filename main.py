@@ -60,6 +60,9 @@ class GitRepoApp:
         self.selected_files = self._get_all_files(
             self.structure
         )  # All files initially selected
+        # Ensure all items (files and folders) are visually selected (no strikethrough)
+        for i in range(self.gui.listbox.size()):
+            self.gui.set_item_tags(i, ())
         self.gui.update_save_button_state(True)
 
     def _get_all_files(self, structure, prefix=""):
@@ -82,14 +85,14 @@ class GitRepoApp:
         is_dir = self._is_directory(full_path)
         is_selected = "strikethrough" not in self.gui.get_item_tags(index)
 
-        if is_selected:
-            if is_dir:
-                self._deselect_folder(index, full_path)
+        if is_dir:
+            if is_selected:
+                self._deselect_folder(full_path)
             else:
-                self._deselect_file(index, full_path)
+                self._select_folder(full_path)
         else:
-            if is_dir:
-                self._select_folder(index, full_path)
+            if is_selected:
+                self._deselect_file(index, full_path)
             else:
                 self._select_file(index, full_path)
         self.gui.update_save_button_state(len(self.selected_files) > 0)
@@ -113,31 +116,31 @@ class GitRepoApp:
         self.gui.set_item_tags(index, ("strikethrough",))
         self.selected_files.discard(path)
 
-    def _select_folder(self, index, path):
-        """Select a folder and its children recursively, removing strikethrough."""
-        self.gui.set_item_tags(index, ())  # Select folder
-        self._update_folder_children(index, path, select=True)
-
-    def _deselect_folder(self, index, path):
-        """Deselect a folder and its children recursively, applying strikethrough."""
-        self.gui.set_item_tags(index, ("strikethrough",))  # Deselect folder
-        self._update_folder_children(index, path, select=False)
-
-    def _update_folder_children(self, start_index, folder_path, select):
-        """Recursively update all children of a folder."""
-        folder_path_with_sep = folder_path + os.sep
-        for i in range(start_index + 1, self.gui.listbox.size()):
-            child_path = self.gui.get_item_text(i)
-            if not child_path.startswith(folder_path_with_sep):
-                break
-            if select:
+    def _select_folder(self, folder_path):
+        """Select a folder and all its children recursively, removing strikethrough."""
+        folder_prefix = folder_path + os.sep if folder_path else ""
+        for i in range(self.gui.listbox.size()):
+            item_path = self.gui.get_item_text(i)
+            # Select the folder itself or any item within it
+            if item_path == folder_path or (
+                folder_prefix and item_path.startswith(folder_prefix)
+            ):
                 self.gui.set_item_tags(i, ())  # Remove strikethrough
-                if not self._is_directory(child_path):
-                    self.selected_files.add(child_path)
-            else:
+                if not self._is_directory(item_path):
+                    self.selected_files.add(item_path)
+
+    def _deselect_folder(self, folder_path):
+        """Deselect a folder and all its children recursively, applying strikethrough."""
+        folder_prefix = folder_path + os.sep if folder_path else ""
+        for i in range(self.gui.listbox.size()):
+            item_path = self.gui.get_item_text(i)
+            # Deselect the folder itself or any item within it
+            if item_path == folder_path or (
+                folder_prefix and item_path.startswith(folder_prefix)
+            ):
                 self.gui.set_item_tags(i, ("strikethrough",))  # Apply strikethrough
-                if not self._is_directory(child_path):
-                    self.selected_files.discard(child_path)
+                if not self._is_directory(item_path):
+                    self.selected_files.discard(item_path)
 
     def save_to_file(self):
         """Save selected files to an output file."""
