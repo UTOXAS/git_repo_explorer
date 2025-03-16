@@ -25,7 +25,6 @@ class GitRepoApp:
         """Configure the visual styles for the application."""
         style = ttk.Style()
         style.configure("Main.TFrame", background="#F9FAFB")
-
         style.configure(
             "Heading.TLabel",
             font=("Arial", 14, "bold"),
@@ -38,7 +37,6 @@ class GitRepoApp:
             background="#F9FAFB",
             foreground="#6B7280",
         )
-
         style.configure(
             "Primary.TButton",
             font=("Arial", 10, "bold"),
@@ -53,7 +51,6 @@ class GitRepoApp:
             background=[("active", "#059669")],
             shiftrelief=[("pressed", -1)],
         )
-
         style.configure(
             "Custom.Treeview",
             font=("Arial", 10),
@@ -75,7 +72,7 @@ class GitRepoApp:
         self.structure = self.repo_handler.get_repo_structure()
         self.gui.display_structure(self.structure)
         self.selected_files = self._get_all_files(self.structure)
-        self.gui.update_save_button_state(len(self.selected_files) > 0)
+        self.gui.update_save_button_state(True)
 
     def _get_all_files(self, structure, prefix=""):
         """Get all file paths from the repository structure."""
@@ -95,14 +92,16 @@ class GitRepoApp:
             return
         full_path = self.gui.tree.item(item, "text")
         is_dir = self._is_directory(full_path)
+        is_strikethrough = "strikethrough" in self.gui.tree.item(item, "tags")
 
-        if (not is_dir and full_path in self.selected_files) or (
-            is_dir
-            and any(f.startswith(full_path + os.sep) for f in self.selected_files)
-        ):
-            self._deselect_item(item, full_path, is_dir)
-        else:
+        if is_strikethrough:
             self._select_item(item, full_path, is_dir)
+        elif not is_dir and full_path in self.selected_files:
+            self._deselect_item(item, full_path, False)
+        elif is_dir:
+            self._deselect_item(item, full_path, True)
+        else:
+            self._select_item(item, full_path, False)
         self.gui.update_save_button_state(len(self.selected_files) > 0)
 
     def _is_directory(self, path):

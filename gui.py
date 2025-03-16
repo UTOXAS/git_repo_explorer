@@ -85,35 +85,17 @@ class RepositoryGUI:
             self.process_callback(repo_path, branch)
 
     def display_structure(self, structure):
-        """Display the repository structure in the treeview with all items expanded."""
+        """Display the repository structure with all items expanded."""
         self.tree.delete(*self.tree.get_children())
         self._populate_tree("", structure)
-        self._expand_all()
 
     def _populate_tree(self, parent, structure):
-        """Recursively populate the treeview with repository structure."""
+        """Populate treeview and expand all items."""
         for path, content in structure.items():
-            full_path = (
-                path
-                if not parent
-                else os.path.join(self.tree.item(parent, "text"), path)
-            )
-            node = self.tree.insert(parent, "end", text=path)
+            node = self.tree.insert(parent, "end", text=path, open=True)
             if isinstance(content, dict):
                 self._populate_tree(node, content)
 
-    def _expand_all(self):
-        """Expand all items in the treeview."""
-        for item in self.tree.get_children():
-            self.tree.item(item, open=True)
-            self._expand_children(item)
-
-    def _expand_children(self, item):
-        """Recursively expand all children of a treeview item."""
-        for child in self.tree.get_children(item):
-            self.tree.item(child, open=True)
-            self._expand_children(child)
-
     def update_save_button_state(self, enabled):
-        """Enable or disable the save button based on selection state."""
+        """Enable or disable the save button based on selection."""
         self.save_button["state"] = "normal" if enabled else "disabled"
