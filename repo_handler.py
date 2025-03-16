@@ -1,13 +1,17 @@
 import os
-import git
+import re
 import shutil
 import tempfile
-import re
+import git
 from charset_normalizer import detect
 from gitignore_parser import parse_gitignore
 
+"""Repository handling module for Git Repository Explorer."""
+
 
 class RepositoryHandler:
+    """Manages repository cloning and content access."""
+
     def __init__(self, repo_path, branch=None):
         self._repo_path = self._strip_branch_from_url(repo_path)
         self._branch = branch
@@ -16,6 +20,7 @@ class RepositoryHandler:
         self._initialize_repository()
 
     def _strip_branch_from_url(self, repo_path):
+        """Strip branch information from GitHub URLs."""
         if repo_path.startswith("https://github.com"):
             match = re.match(
                 r"(https://github\.com/[^/]+/[^/]+)(?:/tree/[^/]+)?", repo_path
@@ -26,12 +31,14 @@ class RepositoryHandler:
         return repo_path
 
     def _initialize_repository(self):
+        """Initialize the repository based on path type."""
         if os.path.isdir(self._repo_path):
             self._setup_local_repo()
         else:
             self._clone_remote_repo()
 
     def _setup_local_repo(self):
+        """Set up a local repository."""
         self._repo_dir = os.path.realpath(self._repo_path)
         if not os.path.exists(os.path.join(self._repo_dir, ".git")):
             raise ValueError(f"Path '{self._repo_path}' is not a Git repository")
@@ -40,6 +47,7 @@ class RepositoryHandler:
             repo.git.checkout(self._branch)
 
     def _clone_remote_repo(self):
+        """Clone a remote repository to a temporary directory."""
         self._temp_dir = tempfile.mkdtemp(prefix="git_repo_")
         clone_args = {"url": self._repo_path, "to_path": self._temp_dir}
         if self._branch:
@@ -48,6 +56,7 @@ class RepositoryHandler:
         self._repo_dir = self._temp_dir
 
     def get_repo_structure(self):
+        """Get the directory structure of the repository."""
         structure = {}
         ignore_func = self._get_ignore_function()
         for root, dirs, files in os.walk(self._repo_dir, topdown=True):
@@ -55,7 +64,6 @@ class RepositoryHandler:
                 dirs[:] = []
                 continue
             relative_root = os.path.relpath(root, self._repo_dir)
-            # Filter dirs and files based on .gitignore
             abs_root = os.path.join(self._repo_dir, relative_root)
             dirs[:] = [d for d in dirs if not ignore_func(os.path.join(abs_root, d))]
             files = [f for f in files if not ignore_func(os.path.join(abs_root, f))]
@@ -63,12 +71,14 @@ class RepositoryHandler:
         return structure
 
     def _get_ignore_function(self):
+        """Create a function to check gitignore rules."""
         gitignore_path = os.path.join(self._repo_dir, ".gitignore")
         if os.path.exists(gitignore_path):
             return parse_gitignore(gitignore_path, base_dir=self._repo_dir)
         return lambda x: False
 
     def _build_structure(self, structure, relative_root, files):
+        """Build the nested structure dictionary."""
         current_level = structure
         if relative_root != ".":
             for part in relative_root.split(os.sep):
@@ -77,6 +87,7 @@ class RepositoryHandler:
             current_level[file] = False
 
     def get_file_content(self, file_path):
+        """Get the content of a specific file."""
         full_path = os.path.join(self._repo_dir, file_path)
         if os.path.getsize(full_path) > 1024 * 1024:  # 1MB limit
             return "Binary file - contents omitted"
@@ -88,6 +99,7 @@ class RepositoryHandler:
         )
 
     def _detect_encoding(self, full_path):
+        """Detect the file encoding."""
         with open(full_path, "rb") as f:
             sample = f.read(min(os.path.getsize(full_path), 64 * 1024))
         result = detect(sample)
@@ -98,9 +110,11 @@ class RepositoryHandler:
         )
 
     def _read_text_file(self, full_path, encoding):
+        """Read the text file with specified encoding."""
         with open(full_path, "r", encoding=encoding) as f:
             return f.read()
 
     def __del__(self):
+        """Clean up temporary directory on object deletion."""
         if self._temp_dir and os.path.exists(self._temp_dir):
             shutil.rmtree(self._temp_dir, ignore_errors=True)

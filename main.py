@@ -5,10 +5,14 @@ from gui import RepositoryGUI
 from repo_handler import RepositoryHandler
 from file_writer import FileWriter
 
+"""Main application module for Git Repository Explorer."""
+
 
 class GitRepoApp:
-    def __init__(self, root):
-        self.root = root
+    """Main application class managing the repository explorer functionality."""
+
+    def __init__(self, window):
+        self.root = window
         self.root.title("Git Repository Explorer")
         self.root.geometry("800x600")
         self.setup_styles()
@@ -18,6 +22,7 @@ class GitRepoApp:
         self.structure = {}
 
     def setup_styles(self):
+        """Configure the visual styles for the application."""
         style = ttk.Style()
         style.configure("Main.TFrame", background="#F9FAFB")
 
@@ -65,6 +70,7 @@ class GitRepoApp:
         )
 
     def process_repo(self, repo_path, branch=None):
+        """Process the repository and update the GUI."""
         self.repo_handler = RepositoryHandler(repo_path, branch)
         self.structure = self.repo_handler.get_repo_structure()
         self.gui.display_structure(self.structure)
@@ -72,6 +78,7 @@ class GitRepoApp:
         self.gui.update_save_button_state(len(self.selected_files) > 0)
 
     def _get_all_files(self, structure, prefix=""):
+        """Get all file paths from the repository structure."""
         files = set()
         for name, content in structure.items():
             full_path = os.path.join(prefix, name) if prefix else name
@@ -82,6 +89,7 @@ class GitRepoApp:
         return files
 
     def on_file_select(self, event):
+        """Handle file selection events in the treeview."""
         item = self.gui.tree.identify("item", event.x, event.y)
         if not item:
             return
@@ -98,6 +106,7 @@ class GitRepoApp:
         self.gui.update_save_button_state(len(self.selected_files) > 0)
 
     def _is_directory(self, path):
+        """Check if a path represents a directory."""
         current = self.structure
         for part in path.split(os.sep):
             if part not in current or not isinstance(current[part], dict):
@@ -106,7 +115,7 @@ class GitRepoApp:
         return True
 
     def _select_item(self, item, path, is_dir):
-        # Apply to the item itself
+        """Select an item and its children if it's a directory."""
         self.gui.tree.item(item, tags=())
         if is_dir:
             for child in self.gui.tree.get_children(item):
@@ -116,7 +125,7 @@ class GitRepoApp:
             self.selected_files.add(path)
 
     def _deselect_item(self, item, path, is_dir):
-        # Apply strikethrough to the item itself
+        """Deselect an item and its children if it's a directory."""
         self.gui.tree.item(item, tags=("strikethrough",))
         if is_dir:
             for child in self.gui.tree.get_children(item):
@@ -126,6 +135,7 @@ class GitRepoApp:
             self.selected_files.discard(path)
 
     def save_to_file(self):
+        """Save selected files to an output file."""
         if not self.selected_files:
             messagebox.showwarning("Warning", "No files selected!")
             return
@@ -135,6 +145,6 @@ class GitRepoApp:
 
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = GitRepoApp(root)
-    root.mainloop()
+    root_window = tk.Tk()
+    app = GitRepoApp(root_window)
+    root_window.mainloop()

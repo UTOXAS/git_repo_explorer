@@ -2,8 +2,12 @@ import tkinter as tk
 from tkinter import ttk
 import os
 
+"""GUI module for Git Repository Explorer."""
+
 
 class RepositoryGUI:
+    """Handles the graphical user interface for the repository explorer."""
+
     def __init__(self, root, app, process_callback):
         self.root = root
         self.app = app
@@ -11,6 +15,7 @@ class RepositoryGUI:
         self.create_widgets()
 
     def create_widgets(self):
+        """Create and configure all GUI widgets."""
         self.main_frame = ttk.Frame(self.root, padding=25, style="Main.TFrame")
         self.main_frame.pack(fill="both", expand=True)
 
@@ -73,24 +78,28 @@ class RepositoryGUI:
         self.save_button.pack(pady=20)
 
     def on_process(self):
+        """Process the repository when the explore button is clicked."""
         repo_path = self.input_entry.get().strip()
         branch = self.branch_entry.get().strip() or None
         if repo_path:
             self.process_callback(repo_path, branch)
 
     def display_structure(self, structure):
+        """Display the repository structure in the treeview."""
         self.tree.delete(*self.tree.get_children())
         self._populate_tree("", structure)
 
     def _populate_tree(self, parent, structure):
+        """Recursively populate the treeview with repository structure."""
         for path, content in structure.items():
-            full_path = (
-                path
-                if not parent
-                else os.path.join(self.tree.item(parent, "text"), path)
-            )
-            # Remove open=True to prevent collapsing functionality
+            if not parent:
+                node_path = path
+            else:
+                node_path = os.path.join(self.tree.item(parent, "text"), path)
             node = self.tree.insert(parent, "end", text=path)
             if isinstance(content, dict):
                 self._populate_tree(node, content)
-            # Files are added without any special tags initially (selected by default)
+
+    def update_save_button_state(self, enabled):
+        """Enable or disable the save button based on selection state."""
+        self.save_button["state"] = "normal" if enabled else "disabled"
