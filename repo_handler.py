@@ -78,9 +78,17 @@ class RepositoryHandler:
         ):
             root_normalized = os.path.normcase(os.path.normpath(os.path.realpath(root)))
             print(f"Traversing: {root_normalized}")
-            if not root_normalized.startswith(repo_dir_normalized):
-                print(f"Skipping out-of-bounds path: {root_normalized}")
+
+            # Ensure the root is within the repository directory
+            try:
+                common_path = os.path.commonpath([repo_dir_normalized, root_normalized])
+                if common_path != repo_dir_normalized:
+                    print(f"Skipping out-of-bounds path: {root_normalized}")
+                    continue
+            except ValueError:
+                print(f"Path comparison failed for: {root_normalized}")
                 continue
+
             if ".git" in root_normalized.split(os.sep):
                 dirs[:] = []
                 print(f"Skipping .git directory: {root_normalized}")
@@ -114,6 +122,8 @@ class RepositoryHandler:
         """Computes the relative path of root from repo_dir safely."""
         try:
             rel_path = os.path.relpath(root, self._repo_dir)
+            if rel_path.startswith("..") or os.path.isabs(rel_path):
+                return None  # Path is outside the repo
             print(f"Computed relative path: {rel_path} for root: {root}")
             return rel_path
         except ValueError as e:
