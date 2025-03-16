@@ -11,44 +11,66 @@ class RepositoryGUI:
         self.create_widgets()
 
     def create_widgets(self):
-        self.main_frame = ttk.Frame(self.root, padding=20)
+        self.main_frame = ttk.Frame(self.root, padding=25, style="Main.TFrame")
         self.main_frame.pack(fill="both", expand=True)
 
         self.input_label = ttk.Label(
-            self.main_frame, text="Enter Git Repo URL or Local Path:"
+            self.main_frame, text="Repository URL or Path:", style="Heading.TLabel"
         )
-        self.input_label.pack(pady=(0, 5))
+        self.input_label.pack(pady=(0, 8))
 
         self.input_entry = tk.Entry(
-            self.main_frame, width=50, font=("Arial", 12), relief="solid", borderwidth=3
+            self.main_frame,
+            width=50,
+            font=("Arial", 11),
+            relief="flat",
+            bg="#F7F7F7",
+            bd=0,
+            highlightthickness=1,
+            highlightcolor="#D0D5DD",
         )
-        self.input_entry.pack(pady=(0, 5))
+        self.input_entry.pack(pady=(0, 12))
 
-        self.branch_label = ttk.Label(self.main_frame, text="Branch (optional):")
-        self.branch_label.pack(pady=(0, 5))
+        self.branch_label = ttk.Label(
+            self.main_frame, text="Branch (optional):", style="Subheading.TLabel"
+        )
+        self.branch_label.pack(pady=(0, 8))
 
         self.branch_entry = tk.Entry(
-            self.main_frame, width=50, font=("Arial", 12), relief="solid", borderwidth=3
+            self.main_frame,
+            width=50,
+            font=("Arial", 11),
+            relief="flat",
+            bg="#F7F7F7",
+            bd=0,
+            highlightthickness=1,
+            highlightcolor="#D0D5DD",
         )
-        self.branch_entry.pack(pady=(0, 10))
+        self.branch_entry.pack(pady=(0, 15))
 
         self.process_button = ttk.Button(
-            self.main_frame, text="Process", command=self.on_process
+            self.main_frame,
+            text="Explore",
+            command=self.on_process,
+            style="Primary.TButton",
         )
-        self.process_button.pack(pady=(0, 10))
+        self.process_button.pack(pady=(0, 20))
 
-        self.tree = ttk.Treeview(self.main_frame, show="tree", selectmode="none")
+        self.tree = ttk.Treeview(
+            self.main_frame, show="tree", selectmode="none", style="Custom.Treeview"
+        )
         self.tree.pack(fill="both", expand=True)
-        self.tree.tag_configure("selected", background="#FFCCCB")
+        self.tree.tag_configure("strikethrough", font=("Arial", 10, "overstrike"))
         self.tree.bind("<Button-1>", self.app.on_file_select)
 
         self.save_button = ttk.Button(
             self.main_frame,
-            text="Save to File",
+            text="Save Selection",
             command=self.app.save_to_file,
+            style="Primary.TButton",
             state="disabled",
         )
-        self.save_button.pack(pady=10)
+        self.save_button.pack(pady=20)
 
     def on_process(self):
         repo_path = self.input_entry.get().strip()
@@ -67,11 +89,8 @@ class RepositoryGUI:
                 if not parent
                 else os.path.join(self.tree.item(parent, "text"), path)
             )
+            # Remove open=True to prevent collapsing functionality
+            node = self.tree.insert(parent, "end", text=path)
             if isinstance(content, dict):
-                node = self.tree.insert(parent, "end", text=path, open=True)
                 self._populate_tree(node, content)
-            else:
-                self.tree.insert(parent, "end", text=full_path, tags=("selected",))
-
-    def update_save_button_state(self, enabled):
-        self.save_button["state"] = "normal" if enabled else "disabled"
+            # Files are added without any special tags initially (selected by default)

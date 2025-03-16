@@ -19,17 +19,50 @@ class GitRepoApp:
 
     def setup_styles(self):
         style = ttk.Style()
-        style.configure("TFrame", background="#F5F5F5")
-        style.configure("TLabel", font=("Arial", 12, "bold"), background="#F5F5F5")
+        style.configure("Main.TFrame", background="#F9FAFB")
+
         style.configure(
-            "TButton",
-            font=("Arial", 10, "bold"),
-            background="#FF5733",
-            foreground="white",
+            "Heading.TLabel",
+            font=("Arial", 14, "bold"),
+            background="#F9FAFB",
+            foreground="#1F2937",
         )
-        style.map("TButton", background=[("active", "#E74C3C")])
-        style.configure("Treeview", font=("Arial", 10), rowheight=25)
-        style.configure("Treeview.Heading", font=("Arial", 10, "bold"))
+        style.configure(
+            "Subheading.TLabel",
+            font=("Arial", 11),
+            background="#F9FAFB",
+            foreground="#6B7280",
+        )
+
+        style.configure(
+            "Primary.TButton",
+            font=("Arial", 10, "bold"),
+            background="#10B981",
+            foreground="#FFFFFF",
+            borderwidth=0,
+            relief="flat",
+            padding=10,
+        )
+        style.map(
+            "Primary.TButton",
+            background=[("active", "#059669")],
+            shiftrelief=[("pressed", -1)],
+        )
+
+        style.configure(
+            "Custom.Treeview",
+            font=("Arial", 10),
+            rowheight=28,
+            background="#FFFFFF",
+            foreground="#374151",
+            fieldbackground="#FFFFFF",
+            borderwidth=1,
+            relief="solid",
+            bordercolor="#E5E7EB",
+        )
+        style.configure(
+            "Custom.Treeview.Heading", font=("Arial", 10, "bold"), background="#F9FAFB"
+        )
 
     def process_repo(self, repo_path, branch=None):
         self.repo_handler = RepositoryHandler(repo_path, branch)
@@ -54,8 +87,10 @@ class GitRepoApp:
             return
         full_path = self.gui.tree.item(item, "text")
         is_dir = self._is_directory(full_path)
-        if full_path in self.selected_files or (
-            is_dir and any(f.startswith(full_path) for f in self.selected_files)
+
+        if (not is_dir and full_path in self.selected_files) or (
+            is_dir
+            and any(f.startswith(full_path + os.sep) for f in self.selected_files)
         ):
             self._deselect_item(item, full_path, is_dir)
         else:
@@ -71,28 +106,24 @@ class GitRepoApp:
         return True
 
     def _select_item(self, item, path, is_dir):
+        # Apply to the item itself
+        self.gui.tree.item(item, tags=())
         if is_dir:
             for child in self.gui.tree.get_children(item):
-                self._select_item(
-                    child,
-                    self.gui.tree.item(child, "text"),
-                    self._is_directory(self.gui.tree.item(child, "text")),
-                )
+                child_path = self.gui.tree.item(child, "text")
+                self._select_item(child, child_path, self._is_directory(child_path))
         else:
             self.selected_files.add(path)
-            self.gui.tree.item(item, tags=("selected",))
 
     def _deselect_item(self, item, path, is_dir):
+        # Apply strikethrough to the item itself
+        self.gui.tree.item(item, tags=("strikethrough",))
         if is_dir:
             for child in self.gui.tree.get_children(item):
-                self._deselect_item(
-                    child,
-                    self.gui.tree.item(child, "text"),
-                    self._is_directory(self.gui.tree.item(child, "text")),
-                )
+                child_path = self.gui.tree.item(child, "text")
+                self._deselect_item(child, child_path, self._is_directory(child_path))
         else:
             self.selected_files.discard(path)
-            self.gui.tree.item(item, tags=())
 
     def save_to_file(self):
         if not self.selected_files:
