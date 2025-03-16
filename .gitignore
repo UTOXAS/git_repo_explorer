@@ -2,3 +2,4 @@ __pycache__/
 .vscode/
 temp_repo/
 repo_contents.txt
+repo_handler.log
