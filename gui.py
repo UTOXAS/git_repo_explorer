@@ -22,7 +22,15 @@ class RepositoryGUI:
         self.input_entry = tk.Entry(
             self.main_frame, width=50, font=("Arial", 12), relief="solid", borderwidth=3
         )
-        self.input_entry.pack(pady=(0, 10))
+        self.input_entry.pack(pady=(0, 5))
+
+        self.branch_label = ttk.Label(self.main_frame, text="Branch (optional):")
+        self.branch_label.pack(pady=(0, 5))
+
+        self.branch_entry = tk.Entry(
+            self.main_frame, width=50, font=("Arial", 12), relief="solid", borderwidth=3
+        )
+        self.branch_entry.pack(pady=(0, 10))
 
         self.process_button = ttk.Button(
             self.main_frame, text="Process", command=self.on_process
@@ -44,8 +52,9 @@ class RepositoryGUI:
 
     def on_process(self):
         repo_path = self.input_entry.get().strip()
+        branch = self.branch_entry.get().strip() or None
         if repo_path:
-            self.process_callback(repo_path)
+            self.process_callback(repo_path, branch)
 
     def display_structure(self, structure):
         self.tree.delete(*self.tree.get_children())

@@ -31,9 +31,9 @@ class GitRepoApp:
         style.configure("Treeview", font=("Arial", 10), rowheight=25)
         style.configure("Treeview.Heading", font=("Arial", 10, "bold"))
 
-    def process_repo(self, repo_path):
+    def process_repo(self, repo_path, branch=None):
         try:
-            self.repo_handler = RepositoryHandler(repo_path)
+            self.repo_handler = RepositoryHandler(repo_path, branch)
             self.structure = self.repo_handler.get_repo_structure()
             self.gui.display_structure(self.structure)
             self.selected_files = self._get_all_files(self.structure)
