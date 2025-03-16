@@ -69,14 +69,21 @@ class RepositoryHandler:
 
         structure = {}
         ignore_func = self._get_ignore_function()
+        repo_dir_normalized = os.path.normpath(self._repo_dir)
 
         for root, dirs, files in os.walk(self._repo_dir, topdown=True):
-            if not self._is_valid_root(root):
+            root_normalized = os.path.normpath(root)
+            if not root_normalized.startswith(repo_dir_normalized):
+                continue  # Skip paths outside the repository root
+            if ".git" in root_normalized.split(os.sep):
+                dirs[:] = []  # Prevent traversal into .git
                 continue
-            self._filter_dirs(dirs, root, ignore_func)
-            relative_root = self._compute_relative_root(root)
+
+            relative_root = self._compute_relative_root(root_normalized)
             if relative_root is None:
                 continue
+
+            self._filter_dirs(dirs, relative_root, ignore_func)
             self._build_structure(structure, relative_root, files, ignore_func)
 
         return structure
@@ -90,13 +97,15 @@ class RepositoryHandler:
             else lambda x: False
         )
 
-    def _is_valid_root(self, root):
-        """Ensures the root path is within the repository directory."""
-        return root.startswith(self._repo_dir) and ".git" not in root.split(os.sep)
+    def _compute_relative_root(self, root):
+        """Computes the relative path of root from repo_dir safely."""
+        try:
+            return os.path.relpath(root, self._repo_dir)
+        except ValueError:
+            return None
 
-    def _filter_dirs(self, dirs, root, ignore_func):
+    def _filter_dirs(self, dirs, relative_root, ignore_func):
         """Filters directories based on .gitignore rules."""
-        relative_root = self._compute_relative_root(root) or "."
         dirs[:] = [
             d
             for d in dirs
@@ -104,13 +113,6 @@ class RepositoryHandler:
                 os.path.join(relative_root, d) if relative_root != "." else d
             )
         ]
-
-    def _compute_relative_root(self, root):
-        """Computes the relative path of root from repo_dir safely."""
-        try:
-            return os.path.relpath(root, self._repo_dir)
-        except ValueError:
-            return None
 
     def _build_structure(self, structure, relative_root, files, ignore_func):
         """Populates the structure dictionary with files and directories."""
