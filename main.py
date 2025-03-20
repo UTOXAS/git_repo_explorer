@@ -20,6 +20,7 @@ class GitRepoApp:
         self.repo_handler = None
         self.selected_files = set()
         self.structure = {}
+        self.all_selected = True  # Track toggle state
 
     def setup_styles(self):
         """Configure the visual styles for the application."""
@@ -57,12 +58,9 @@ class GitRepoApp:
         self.repo_handler = RepositoryHandler(repo_path, branch)
         self.structure = self.repo_handler.get_repo_structure()
         self.gui.display_structure(self.structure)
-        self.selected_files = self._get_all_files(
-            self.structure
-        )  # All files initially selected
-        # Ensure all items (files and folders) are visually selected (no strikethrough)
-        for i in range(self.gui.listbox.size()):
-            self.gui.set_item_tags(i, ())
+        self.selected_files = self._get_all_files(self.structure)
+        self.all_selected = True
+        self._update_all_visuals()
         self.gui.update_save_button_state(True)
 
     def _get_all_files(self, structure, prefix=""):
@@ -117,30 +115,44 @@ class GitRepoApp:
         self.selected_files.discard(path)
 
     def _select_folder(self, folder_path):
-        """Select a folder and all its children recursively, removing strikethrough."""
+        """Select a folder and all its children recursively."""
         folder_prefix = folder_path + os.sep if folder_path else ""
         for i in range(self.gui.listbox.size()):
             item_path = self.gui.get_item_text(i)
-            # Select the folder itself or any item within it
             if item_path == folder_path or (
                 folder_prefix and item_path.startswith(folder_prefix)
             ):
-                self.gui.set_item_tags(i, ())  # Remove strikethrough
+                self.gui.set_item_tags(i, ())
                 if not self._is_directory(item_path):
                     self.selected_files.add(item_path)
 
     def _deselect_folder(self, folder_path):
-        """Deselect a folder and all its children recursively, applying strikethrough."""
+        """Deselect a folder and all its children recursively."""
         folder_prefix = folder_path + os.sep if folder_path else ""
         for i in range(self.gui.listbox.size()):
             item_path = self.gui.get_item_text(i)
-            # Deselect the folder itself or any item within it
             if item_path == folder_path or (
                 folder_prefix and item_path.startswith(folder_prefix)
             ):
-                self.gui.set_item_tags(i, ("strikethrough",))  # Apply strikethrough
+                self.gui.set_item_tags(i, ("strikethrough",))
                 if not self._is_directory(item_path):
                     self.selected_files.discard(item_path)
+
+    def toggle_all_selection(self):
+        """Toggle selection state of all items."""
+        self.all_selected = not self.all_selected
+        if self.all_selected:
+            self.selected_files = self._get_all_files(self.structure)
+        else:
+            self.selected_files.clear()
+        self._update_all_visuals()
+        self.gui.update_save_button_state(self.all_selected)
+
+    def _update_all_visuals(self):
+        """Update visual state of all items based on toggle."""
+        tags = () if self.all_selected else ("strikethrough",)
+        for i in range(self.gui.listbox.size()):
+            self.gui.set_item_tags(i, tags)
 
     def save_to_file(self):
         """Save selected files to an output file."""
