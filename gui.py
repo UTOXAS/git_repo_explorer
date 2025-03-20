@@ -18,79 +18,97 @@ class RepositoryGUI:
 
     def create_widgets(self):
         """Create and configure all GUI widgets."""
-        self.main_frame = ttk.Frame(self.root, padding=25, style="Main.TFrame")
+        self.main_frame = ttk.Frame(self.root, padding=30, style="Main.TFrame")
         self.main_frame.pack(fill="both", expand=True)
 
         self.input_label = ttk.Label(
-            self.main_frame, text="Repository URL or Path:", style="Heading.TLabel"
+            self.main_frame, text="REPO URL OR PATH", style="Heading.TLabel"
         )
-        self.input_label.pack(pady=(0, 8))
+        self.input_label.pack(pady=(0, 10))
 
         self.input_entry = tk.Entry(
             self.main_frame,
-            width=50,
-            font=("Arial", 11),
-            relief="flat",
-            bg="#F7F7F7",
-            bd=0,
-            highlightthickness=1,
-            highlightcolor="#D0D5DD",
+            width=40,
+            font=("Consolas", 12, "bold"),
+            relief="solid",
+            borderwidth=3,
+            bg="#E8ECEF",
+            fg="#2B2D42",
+            insertbackground="#FFB4A2",
         )
-        self.input_entry.pack(pady=(0, 12))
+        self.input_entry.pack(pady=(0, 15))
 
         self.branch_label = ttk.Label(
-            self.main_frame, text="Branch (optional):", style="Subheading.TLabel"
+            self.main_frame, text="BRANCH (OPT)", style="Subheading.TLabel"
         )
-        self.branch_label.pack(pady=(0, 8))
+        self.branch_label.pack(pady=(0, 10))
 
         self.branch_entry = tk.Entry(
             self.main_frame,
-            width=50,
-            font=("Arial", 11),
-            relief="flat",
-            bg="#F7F7F7",
-            bd=0,
-            highlightthickness=1,
-            highlightcolor="#D0D5DD",
+            width=40,
+            font=("Consolas", 12, "bold"),
+            relief="solid",
+            borderwidth=3,
+            bg="#E8ECEF",
+            fg="#2B2D42",
+            insertbackground="#FFB4A2",
         )
-        self.branch_entry.pack(pady=(0, 15))
+        self.branch_entry.pack(pady=(0, 20))
+
+        # Button frame for alignment
+        self.button_frame = ttk.Frame(self.main_frame, style="Main.TFrame")
+        self.button_frame.pack(fill="x", pady=(0, 15))
 
         self.process_button = ttk.Button(
-            self.main_frame,
-            text="Explore",
+            self.button_frame,
+            text="EXPLORE",
             command=self.on_process,
             style="Primary.TButton",
         )
-        self.process_button.pack(pady=(0, 10))
+        self.process_button.pack(side="left", padx=10)
 
         self.toggle_button = ttk.Button(
-            self.main_frame,
-            text="Toggle All",
+            self.button_frame,
+            text="TOGGLE ALL",
             command=self.app.toggle_all_selection,
-            style="Primary.TButton",
+            style="Secondary.TButton",
             state="disabled",
         )
-        self.toggle_button.pack(pady=(0, 10))
+        self.toggle_button.pack(side="right", padx=10)
+
+        # Listbox with integrated scrollbar
+        self.listbox_frame = ttk.Frame(self.main_frame, style="Main.TFrame")
+        self.listbox_frame.pack(fill="both", expand=True)
 
         self.listbox = tk.Listbox(
-            self.main_frame,
-            font=("Arial", 10),
-            bg="#FFFFFF",
-            fg="#374151",
+            self.listbox_frame,
+            font=("Consolas", 11),
+            bg="#D8E2DC",
+            fg="#2B2D42",
             selectmode="none",
             relief="solid",
-            borderwidth=1,
+            borderwidth=2,
             highlightthickness=0,
             activestyle="none",
-            selectbackground="#FFFFFF",
-            selectforeground="#374151",
+            selectbackground="#FFB4A2",
+            selectforeground="#2B2D42",
+            height=15,
         )
-        self.listbox.pack(fill="both", expand=True)
+        self.listbox.pack(side="left", fill="both", expand=True)
+
+        scrollbar = ttk.Scrollbar(
+            self.listbox_frame,
+            orient="vertical",
+            command=self.listbox.yview,
+            style="Vertical.TScrollbar",
+        )
+        scrollbar.pack(side="right", fill="y")
+        self.listbox.config(yscrollcommand=scrollbar.set)
         self.listbox.bind("<Button-1>", self.app.on_file_select)
 
         self.save_button = ttk.Button(
             self.main_frame,
-            text="Save Selection",
+            text="SAVE",
             command=self.app.save_to_file,
             style="Primary.TButton",
             state="disabled",

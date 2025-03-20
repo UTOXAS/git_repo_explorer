@@ -13,7 +13,7 @@ class GitRepoApp:
 
     def __init__(self, window):
         self.root = window
-        self.root.title("Git Repository Explorer")
+        self.root.title("GIT REPO EXPLORER")
         self.root.geometry("800x600")
         self.setup_styles()
         self.gui = RepositoryGUI(self.root, self, self.process_repo)
@@ -25,32 +25,53 @@ class GitRepoApp:
     def setup_styles(self):
         """Configure the visual styles for the application."""
         style = ttk.Style()
-        style.configure("Main.TFrame", background="#F9FAFB")
+        style.configure("Main.TFrame", background="#F5F6CE")  # Soft cream
         style.configure(
             "Heading.TLabel",
-            font=("Arial", 14, "bold"),
-            background="#F9FAFB",
-            foreground="#1F2937",
+            font=("Consolas", 16, "bold"),
+            background="#F5F6CE",
+            foreground="#2B2D42",  # Dark slate
         )
         style.configure(
             "Subheading.TLabel",
-            font=("Arial", 11),
-            background="#F9FAFB",
-            foreground="#6B7280",
+            font=("Consolas", 12, "bold"),
+            background="#F5F6CE",
+            foreground="#2B2D42",
         )
         style.configure(
             "Primary.TButton",
-            font=("Arial", 10, "bold"),
-            background="#10B981",
-            foreground="#FFFFFF",
-            borderwidth=0,
-            relief="flat",
-            padding=10,
+            font=("Consolas", 12, "bold"),
+            background="#FFB4A2",  # Soft peach
+            foreground="#2B2D42",  # Dark slate for contrast
+            borderwidth=3,
+            relief="raised",
+            padding=12,
         )
         style.map(
             "Primary.TButton",
-            background=[("active", "#059669")],
-            shiftrelief=[("pressed", -1)],
+            background=[("active", "#E59887")],
+            relief=[("pressed", "sunken")],
+        )
+        style.configure(
+            "Secondary.TButton",
+            font=("Consolas", 12, "bold"),
+            background="#A9DEF9",  # Light sky blue
+            foreground="#2B2D42",  # Dark slate for contrast
+            borderwidth=3,
+            relief="raised",
+            padding=12,
+        )
+        style.map(
+            "Secondary.TButton",
+            background=[("active", "#8CCDE8")],
+            relief=[("pressed", "sunken")],
+        )
+        style.configure(
+            "Vertical.TScrollbar",
+            background="#D8E2DC",  # Match listbox
+            troughcolor="#F5F6CE",
+            borderwidth=2,
+            relief="solid",
         )
 
     def process_repo(self, repo_path, branch=None):
