@@ -47,3 +47,7 @@ class FileWriter:
             else:
                 files.add(full_path)
         return files
+
+    def get_user_home_directory(self):
+        """Gets the current Windows user's home directory."""
+        return os.path.expanduser("~")

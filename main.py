@@ -181,8 +181,14 @@ class GitRepoApp:
             messagebox.showwarning("Warning", "No files selected!")
             return
         writer = FileWriter(self.repo_handler, self.selected_files)
-        writer.save_to_file("repo_contents.txt")
-        messagebox.showinfo("Success", "Repository contents saved to repo_contents.txt")
+        user_home_directory = writer.get_user_home_directory()
+        filename = "repo_contents.txt"
+        full_filepath = os.path.join(user_home_directory, filename)
+        writer.save_to_file(full_filepath)
+        messagebox.showinfo(
+            "Success",
+            "Repository contents saved to ${full_filepath}",
+        )
 
 
 if __name__ == "__main__":
