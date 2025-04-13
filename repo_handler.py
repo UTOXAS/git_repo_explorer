@@ -12,6 +12,20 @@ from gitignore_parser import parse_gitignore
 class RepositoryHandler:
     """Manages repository cloning and content access."""
 
+    # Define common text file extensions
+    TEXT_EXTENSIONS = {
+        ".md",
+        ".txt",
+        ".py",
+        ".bat",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".ini",
+        ".cfg",
+        ".sh",
+    }
+
     def __init__(self, repo_path, branch=None):
         self._repo_path = self._strip_branch_from_url(repo_path)
         self._branch = branch
@@ -89,8 +103,21 @@ class RepositoryHandler:
     def get_file_content(self, file_path):
         """Get the content of a specific file."""
         full_path = os.path.join(self._repo_dir, file_path)
+
+        # Check file size
         if os.path.getsize(full_path) > 1024 * 1024:  # 1MB limit
             return "Binary file - contents omitted"
+
+        # Check if file has a known text extension
+        _, ext = os.path.splitext(file_path)
+        if ext.lower() in self.TEXT_EXTENSIONS:
+            try:
+                return self._read_text_file(full_path, "utf-8")
+            except UnicodeDecodeError:
+                # Fallback to encoding detection if UTF-8 fails
+                pass
+
+        # Proceed with encoding detection for other files
         encoding = self._detect_encoding(full_path)
         return (
             self._read_text_file(full_path, encoding)
@@ -101,18 +128,30 @@ class RepositoryHandler:
     def _detect_encoding(self, full_path):
         """Detect the file encoding."""
         with open(full_path, "rb") as f:
-            sample = f.read(min(os.path.getsize(full_path), 64 * 1024))
+            file_size = os.path.getsize(full_path)
+            sample = f.read(min(file_size, 64 * 1024))
+
+        # Handle empty files
+        if not len(sample):
+            return "utf-8"  # Assume UTF-8 for empty files
+
         result = detect(sample)
+        # Lower confidence threshold to 0.8
         return (
             result["encoding"]
-            if result["confidence"] and result["confidence"] > 0.95
+            if result["encoding"]
+            and result["confidence"]
+            and result["confidence"] > 0.8
             else None
         )
 
     def _read_text_file(self, full_path, encoding):
         """Read the text file with specified encoding."""
-        with open(full_path, "r", encoding=encoding) as f:
-            return f.read()
+        try:
+            with open(full_path, "r", encoding=encoding) as f:
+                return f.read()
+        except UnicodeDecodeError:
+            return "Binary file - contents omitted"
 
     def __del__(self):
         """Clean up temporary directory on object deletion."""
