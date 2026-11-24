@@ -13,26 +13,34 @@ class FileWriter:
     def save_to_file(self, output_file):
         """Save repository structure and contents to the specified file."""
         with open(output_file, "w", encoding="utf-8") as f:
+            # ADDED: Include active commit metadata header in exported file
+            if getattr(self.repo_handler, "current_commit", None):
+                f.write(f"Commit: {self.repo_handler.current_commit}\n\n")
             f.write("Directory structure:\n")
             structure = self.repo_handler.get_repo_structure()
             self._write_structure(f, structure)
             f.write("\nFiles Content:\n")
             all_files = self._get_all_files(structure)
-            self.selected_files = self.selected_files or all_files
-            self._write_file_contents(f)
+            # MODIFIED: Avoid mutating instance attribute
+            files_to_write = self.selected_files if self.selected_files else all_files
+            self._write_file_contents(f, files_to_write)
 
     def _write_structure(self, file, structure, prefix=""):
         """Write directory structure to the file."""
-        for name, content in structure.items():
+        # MODIFIED: Sort directories first, then files alphabetically
+        sorted_items = sorted(
+            structure.items(), key=lambda item: (not isinstance(item[1], dict), item[0].lower())
+        )
+        for name, content in sorted_items:
             if isinstance(content, dict):
                 file.write(f"{prefix}└── {name}/\n")
                 self._write_structure(file, content, prefix + "    ")
             else:
                 file.write(f"{prefix}    ├── {name}\n")
 
-    def _write_file_contents(self, file):
+    def _write_file_contents(self, file, files_to_write):
         """Write contents of selected files to the output file."""
-        for file_path in sorted(self.selected_files):
+        for file_path in sorted(files_to_write):
             content = self.repo_handler.get_file_content(file_path)
             file.write(f"\n{'=' * 48}\nFile: {file_path}\n{'=' * 48}\n")
             file.write(f"{content}\n")

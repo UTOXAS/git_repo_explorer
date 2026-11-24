@@ -1,0 +1,4 @@
+customtkinter
+GitPython
+charset-normalizer
+gitignore-parser
